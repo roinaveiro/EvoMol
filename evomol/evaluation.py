@@ -13,6 +13,7 @@ from rdkit.Chem import Descriptors, AllChem
 from rdkit.Chem.QED import qed
 from rdkit.Chem.rdmolfiles import MolToSmiles, MolFromSmiles
 from rdkit.Chem.rdMolDescriptors import CalcNumRotatableBonds
+from rdkit import DataStructs
 
 import pandas as pd
 
@@ -25,6 +26,10 @@ from evomol.molgraphops.molgraph import MolGraph
 sys.path.append(os.path.join(RDConfig.RDContribDir, 'SA_Score'))
 import sascorer
 import numpy as np
+
+import pickle
+
+from config import moleval
 
 
 class EvaluationError(RuntimeError):
@@ -987,3 +992,71 @@ def scores_to_scores_dict(total_scores, scores, keys):
     step_scores_dict["total"] = total_scores
 
     return step_scores_dict
+
+
+####################################################################################
+
+class SimilarityTrainEvaluationStrategy(EvaluationStrategy):
+    """
+    Similarity to Millad Dataset via Tanimoto Distance
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.scores = None
+        self.smis_train = np.loadtxt("evomol/datasets/millad.txt", dtype=object)
+        self.mols_train  = [MolFromSmiles(smi) for smi in self.smis_train]
+
+    def similarity(self, individual):
+
+        ref_mol = AllChem.GetMorganFingerprintAsBitVect(individual, 3, 2048) 
+        mol_list = [AllChem.GetMorganFingerprintAsBitVect(x, 3, 2048) for x in self.mols_train] 
+        
+        sims = DataStructs.BulkTanimotoSimilarity(ref_mol, mol_list)
+        
+        return np.mean(sims)
+
+    def keys(self):
+        return ["simT"]
+
+    def evaluate_individual(self, individual, to_replace_idx=None):
+
+        super().evaluate_individual(individual, to_replace_idx)
+
+        if individual is None:
+            return None, [None]
+        else:
+            mol_graph = MolFromSmiles(individual.to_aromatic_smiles())
+            score = self.similarity(mol_graph)
+            return score, [score]
+
+
+class AntiHazeEvaluationStrategy(EvaluationStrategy):
+    """
+    Predicticted anti-Haze (via RF model)
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.scores = None
+
+
+    def predict_ah_fp(self, mol):
+
+
+        return moleval.predict_individual_from_graph(mol, 'anti-haze')
+
+
+    def keys(self):
+        return ["antiH"]
+
+    def evaluate_individual(self, individual, to_replace_idx=None):
+
+        super().evaluate_individual(individual, to_replace_idx)
+
+        if individual is None:
+            return None, [None]
+        else:
+            mol_graph = MolFromSmiles(individual.to_aromatic_smiles())
+            score = moleval.predict_individual_from_graph(mol_graph, 'anti-haze')
+            return score, [score]

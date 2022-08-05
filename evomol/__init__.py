@@ -6,7 +6,7 @@ from .evaluation import EvaluationStrategy, GenericFunctionEvaluationStrategy, Q
     ProductSigmLinEvaluationStrategy, ProductEvaluationStrategy, SigmLinWrapperEvaluationStrategy, \
     GaussianWrapperEvaluationStrategy, EvaluationStrategyComposant, OppositeWrapperEvaluationStrategy, \
     IsomerGuacaMolEvaluationStrategy, MeanEvaluationStrategyComposite, OneMinusWrapperEvaluationStrategy, \
-    NPerturbationsEvaluationStrategy
+    NPerturbationsEvaluationStrategy, SimilarityTrainEvaluationStrategy, AntiHazeEvaluationStrategy
 from .evaluation_dft import OPTEvaluationStrategy, SharedLastComputation
 from .evaluation_entropy import EntropyContribEvaluationStrategy
 from .molgraphops.default_actionspaces import generic_action_space
@@ -46,7 +46,7 @@ def _is_describing_implemented_function(param_eval):
 
     return param_eval in ["qed", "sascore", "norm_sascore", "plogp", "norm_plogp", "clscore", "homo", "lumo", "homo-1",
                           "gap", "entropy_gen_scaffolds", "entropy_ifg", "entropy_shg_1", "entropy_checkmol",
-                          "n_perturbations"]\
+                          "n_perturbations", "simT", "antiH"]\
            or param_eval.startswith("guacamol") or param_eval.startswith("isomer")
 
 
@@ -76,6 +76,10 @@ def _build_evaluation_strategy_from_implemented_function(param_eval, explicit_IO
 
     if param_eval == "qed":
         strat = QEDEvaluationStrategy()
+    elif param_eval == "antiH":
+        strat = AntiHazeEvaluationStrategy()
+    elif param_eval == "simT":
+        strat = SimilarityTrainEvaluationStrategy()
     elif param_eval == "sascore":
         strat = SAScoreEvaluationStrategy()
     elif param_eval == "norm_sascore":
